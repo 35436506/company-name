@@ -1,74 +1,78 @@
 # Company Name Matcher
 
-App Streamlit để so khớp tên công ty (fuzzy matching) giữa danh sách **Indue** (chuẩn so sánh) và một danh sách khác. Hỗ trợ upload:
+A Streamlit app for fuzzy-matching company names between an **Indue** (reference) list and another list. Supports uploading:
 
-- **1 file Excel có nhiều tab** (ví dụ tab `IndueD` và tab `KEV`), hoặc
-- **2 file Excel riêng biệt**
+- **1 Excel file with multiple tabs** (e.g. tabs `IndueD` and `KEV`), or
+- **2 separate Excel files**
 
-App tự động nhận diện tab/file nào là "Indue" dựa trên tên (chứa chữ `indue`, không phân biệt hoa thường), tự dò cột chứa tên công ty, và xuất ra file kết quả gồm 3 tab: `Result`, `Source - <Indue>`, `Source - <khác>`.
+The app automatically detects which tab/file is "Indue" based on its name (containing the word `indue`, case-insensitive), auto-detects the column containing company names, and produces a result file with 3 tabs: `Result`, `Source - <Indue>`, `Source - <other>`.
 
-## Chạy thử trên máy (local)
+## Run locally
 
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Sau đó mở `http://localhost:8501` trên trình duyệt.
+Then open `http://localhost:8501` in your browser.
 
-## Deploy lên Streamlit Community Cloud (miễn phí)
+## Deploy to Streamlit Community Cloud (free)
 
-### Bước 1 — Đưa code lên GitHub
+### Step 1 — Push the code to GitHub
 
-1. Tạo một repository mới trên GitHub (ví dụ tên `company-name-matcher`), để **Public** hoặc **Private** đều được.
-2. Trên máy, vào thư mục chứa các file này (`app.py`, `requirements.txt`, `README.md`) và chạy:
+1. Create a new repository on GitHub (e.g. named `company-name-matcher`), either Public or Private.
+2. From the folder containing these files (`app.py`, `requirements.txt`, `README.md`), run:
 
 ```bash
 git init
 git add .
 git commit -m "Initial commit: company name matcher app"
 git branch -M main
-git remote add origin https://github.com/<TÊN_GITHUB_CỦA_BẠN>/company-name-matcher.git
+git remote add origin https://github.com/<YOUR_GITHUB_USERNAME>/company-name-matcher.git
 git push -u origin main
 ```
 
-> Thay `<TÊN_GITHUB_CỦA_BẠN>` bằng username GitHub của bạn. Nếu chưa cấu hình Git, chạy thêm:
-> `git config --global user.email "ban@example.com"` và `git config --global user.name "Tên Bạn"`.
+> Replace `<YOUR_GITHUB_USERNAME>` with your GitHub username. If Git isn't configured yet, also run:
+> `git config --global user.email "you@example.com"` and `git config --global user.name "Your Name"`.
 
-Nếu bạn không quen dùng dòng lệnh Git, cách đơn giản hơn:
-1. Vào [github.com/new](https://github.com/new), tạo repo mới, **không** tick "Add a README".
-2. Trên trang repo vừa tạo, bấm **"uploading an existing file"**.
-3. Kéo thả 3 file `app.py`, `requirements.txt`, `README.md` vào, rồi bấm **Commit changes**.
+If you'd rather not use the command line:
+1. Go to [github.com/new](https://github.com/new), create a new repo, and **don't** tick "Add a README".
+2. On the new repo's page, click **"uploading an existing file"**.
+3. Drag and drop `app.py`, `requirements.txt`, and `README.md`, then click **Commit changes**.
 
-### Bước 2 — Deploy trên Streamlit Cloud
+### Step 2 — Deploy on Streamlit Cloud
 
-1. Truy cập [share.streamlit.io](https://share.streamlit.io) và đăng nhập bằng tài khoản GitHub.
-2. Bấm **"New app"**.
-3. Chọn:
-   - **Repository**: repo bạn vừa tạo (ví dụ `<tên-bạn>/company-name-matcher`)
+1. Go to [share.streamlit.io](https://share.streamlit.io) and sign in with your GitHub account.
+2. Click **"New app"**.
+3. Choose:
+   - **Repository**: the repo you just created (e.g. `<your-username>/company-name-matcher`)
    - **Branch**: `main`
    - **Main file path**: `app.py`
-4. Bấm **"Deploy!"**.
+4. Click **"Deploy!"**.
 
-Sau khoảng 1–2 phút, Streamlit sẽ cấp cho bạn một link dạng:
+After a minute or two, Streamlit will give you a link like:
 
 ```
-https://<tên-app>-<random>.streamlit.app
+https://<app-name>-<random>.streamlit.app
 ```
 
-Mỗi lần bạn push code mới lên GitHub, app trên Streamlit Cloud sẽ tự động cập nhật theo.
+Every time you push new code to GitHub, the app on Streamlit Cloud will redeploy automatically.
 
-## Cấu trúc file
+## File structure
 
 ```
 .
-├── app.py              # Mã nguồn chính của app Streamlit
-├── requirements.txt    # Các thư viện Python cần thiết
-└── README.md            # Hướng dẫn này
+├── app.py              # Main Streamlit app source code
+├── requirements.txt    # Required Python packages
+└── README.md            # This guide
 ```
 
-## Lưu ý
+## Notes
 
-- Ngưỡng điểm matching (mặc định 86/100) có thể điều chỉnh trực tiếp trên giao diện app bằng thanh trượt.
-- Nếu app không tự nhận diện đúng tab/file "Indue" (ví dụ tên file/tab không chứa chữ "Indue"), bạn có thể chọn tay trong giao diện.
-- File tải về không ghi đè file gốc — luôn là một file Excel mới.
+- The matching threshold (default 86/100) can be adjusted directly in the app using the slider.
+- If the app doesn't correctly auto-detect the "Indue" tab/file (e.g. its name doesn't contain "Indue"), you can select it manually in the interface.
+- The downloaded file never overwrites your original data — it's always a new Excel file.
+
+## A note on data security
+
+This app, when deployed on Streamlit Community Cloud's free tier, runs on shared public infrastructure with no built-in login — anyone with the app's link can open it and upload files. Uploaded data is processed in memory and isn't intentionally stored long-term, and traffic is encrypted in transit, but there's no enterprise-grade compliance guarantee (e.g. SOC2, GDPR data processing agreement) at the free tier. If your company names or related data are commercially sensitive or covered by confidentiality obligations, consider adding a login/password step, hosting the app on your own company infrastructure, or using a paid/enterprise Streamlit deployment instead of sharing the public link externally.
