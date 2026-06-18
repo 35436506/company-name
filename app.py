@@ -1,15 +1,15 @@
 """
 Company Name Fuzzy Matching — Streamlit App
 =============================================
-Upload 1 file Excel (nhiều tab) HOẶC 2 file Excel riêng biệt.
-App tự động nhận diện tab/file nào là "Indue" (chuẩn so sánh) dựa trên
-tên file hoặc tên tab có chứa chữ "indue" (không phân biệt hoa/thường).
-Nếu không tự nhận diện được, người dùng có thể chọn tay.
+Upload either 1 Excel file (multiple tabs) OR 2 separate Excel files.
+The app automatically detects which tab/file is "Indue" (the reference
+list) based on the file or tab name containing "indue" (case-insensitive).
+If it can't auto-detect, the user can choose manually.
 
-Kết quả: bảng xem trước trong app + file Excel để tải xuống, gồm 3 tab:
-  - Result: cột Indue, cột khớp gần nhất, điểm số matching
-  - Source - <tên Indue>: dữ liệu gốc đầy đủ
-  - Source - <tên khác>: dữ liệu gốc đầy đủ
+Output: a preview table in the app + a downloadable Excel file with 3 tabs:
+  - Result: Indue column, best-match column, match score
+  - Source - <Indue name>: full original data
+  - Source - <other name>: full original data
 """
 
 import io
@@ -24,16 +24,16 @@ from openpyxl.utils import get_column_letter
 from rapidfuzz import fuzz, process
 
 # ============================================================================
-# CẤU HÌNH TRANG
+# PAGE CONFIG
 # ============================================================================
 st.set_page_config(page_title="Company Name Matcher", page_icon="🔎", layout="wide")
 
 
 # ============================================================================
-# 1. CHUẨN HÓA TÊN CÔNG TY
+# 1. NORMALISE COMPANY NAMES
 # ============================================================================
 def clean(name: str) -> str:
-    """Chuẩn hóa tên công ty: lowercase, bỏ dấu, bỏ hậu tố pháp lý/trạng thái, bỏ dấu câu."""
+    """Normalise a company name: lowercase, strip accents, strip legal/status suffixes, strip punctuation."""
     if not isinstance(name, str):
         return ""
     s = name.lower()
@@ -52,14 +52,14 @@ def clean(name: str) -> str:
 
 
 def combined_score(a_clean: str, b_clean: str) -> float:
-    """Kết hợp token_sort_ratio (chịu đảo từ) + ratio (phạt lệch độ dài)."""
+    """Blend token_sort_ratio (handles reordered words) with ratio (penalises length mismatches)."""
     s1 = fuzz.token_sort_ratio(a_clean, b_clean)
     s2 = fuzz.ratio(a_clean, b_clean)
     return 0.7 * s1 + 0.3 * s2
 
 
 # ============================================================================
-# 2. DÒ TÌM CỘT TÊN CÔNG TY & TRÍCH DANH SÁCH
+# 2. DETECT COMPANY-NAME COLUMN & EXTRACT NAMES
 # ============================================================================
 def find_company_column(df: pd.DataFrame) -> int:
     headers = [str(c).strip().lower() for c in df.columns]
@@ -122,7 +122,7 @@ def match_all(indue_names: list[str], other_names: list[str], threshold: float):
 
 
 # ============================================================================
-# 4. GHI FILE EXCEL KẾT QUẢ (trả về bytes để Streamlit cho download)
+# 4. BUILD OUTPUT EXCEL FILE (returns bytes for Streamlit download)
 # ============================================================================
 HEADER_FILL = PatternFill("solid", fgColor="4472C4")
 HEADER_FONT = Font(bold=True, color="FFFFFF", name="Arial", size=11)
@@ -185,7 +185,7 @@ def build_output_excel(results, indue_label, other_label, indue_raw, other_raw) 
 
 
 # ============================================================================
-# 5. ĐỌC FILE UPLOAD → DICT {sheet_name: df}
+# 5. READ UPLOADED FILE → DICT {sheet_name: df}
 # ============================================================================
 @st.cache_data(show_spinner=False)
 def read_excel_sheets(file_bytes: bytes) -> dict[str, pd.DataFrame]:
@@ -197,61 +197,61 @@ def read_excel_sheets(file_bytes: bytes) -> dict[str, pd.DataFrame]:
 # ============================================================================
 st.title("🔎 Company Name Matcher")
 st.write(
-    "So khớp tên công ty giữa danh sách **Indue** (chuẩn) và danh sách khác bằng "
-    "fuzzy matching. Hỗ trợ upload **1 file Excel nhiều tab** hoặc **2 file Excel riêng biệt**."
+    "Match company names between an **Indue** (reference) list and another list using "
+    "fuzzy matching. Supports uploading **1 Excel file with multiple tabs** or **2 separate Excel files**."
 )
 
 mode = st.radio(
-    "Chọn cách upload dữ liệu:",
-    ["1 file Excel (nhiều tab)", "2 file Excel riêng biệt"],
+    "Choose how to upload your data:",
+    ["1 Excel file (multiple tabs)", "2 separate Excel files"],
     horizontal=True,
 )
 
 threshold = st.slider(
-    "Ngưỡng độ giống để chấp nhận khớp (0–100)",
+    "Similarity threshold to accept a match (0–100)",
     min_value=50, max_value=100, value=86, step=1,
-    help="Điểm thấp hơn ngưỡng này sẽ để trống ô khớp (coi như không tìm thấy)."
+    help="Scores below this threshold leave the match cell blank (treated as no match found)."
 )
 
 indue_raw, other_raw, indue_label, other_label = None, None, None, None
 
-if mode == "1 file Excel (nhiều tab)":
-    uploaded = st.file_uploader("Upload file Excel (.xlsx)", type=["xlsx", "xlsm"])
+if mode == "1 Excel file (multiple tabs)":
+    uploaded = st.file_uploader("Upload Excel file (.xlsx)", type=["xlsx", "xlsm"])
     if uploaded:
         sheets = read_excel_sheets(uploaded.getvalue())
         sheet_names = list(sheets.keys())
         if len(sheet_names) < 2:
-            st.error("File này chỉ có 1 tab. Cần ít nhất 2 tab để so sánh.")
+            st.error("This file only has 1 tab. At least 2 tabs are needed to compare.")
         else:
             auto_indue = [n for n in sheet_names if is_indue_label(n)]
             default_indue = auto_indue[0] if auto_indue else sheet_names[0]
             col1, col2 = st.columns(2)
             with col1:
                 indue_label = st.selectbox(
-                    "Tab chuẩn (Indue)", sheet_names,
+                    "Reference tab (Indue)", sheet_names,
                     index=sheet_names.index(default_indue),
                 )
             with col2:
                 remaining = [n for n in sheet_names if n != indue_label]
-                other_label = st.selectbox("Tab so sánh", remaining, index=0)
+                other_label = st.selectbox("Comparison tab", remaining, index=0)
             indue_raw = sheets[indue_label]
             other_raw = sheets[other_label]
             if auto_indue:
-                st.caption(f"✓ Tự động nhận diện tab Indue: **{auto_indue[0]}**")
+                st.caption(f"✓ Automatically detected Indue tab: **{auto_indue[0]}**")
             else:
-                st.caption("⚠️ Không tự nhận diện được tab Indue theo tên — vui lòng chọn tay ở trên.")
+                st.caption("⚠️ Couldn't auto-detect the Indue tab from its name — please choose manually above.")
 
 else:
     col1, col2 = st.columns(2)
     with col1:
-        indue_file = st.file_uploader("Upload file Indue (chuẩn so sánh)", type=["xlsx", "xlsm"], key="indue")
+        indue_file = st.file_uploader("Upload Indue file (reference list)", type=["xlsx", "xlsm"], key="indue")
     with col2:
-        other_file = st.file_uploader("Upload file còn lại (để so sánh)", type=["xlsx", "xlsm"], key="other")
+        other_file = st.file_uploader("Upload the other file (to compare)", type=["xlsx", "xlsm"], key="other")
 
     if indue_file and other_file:
         indue_sheets = read_excel_sheets(indue_file.getvalue())
         other_sheets = read_excel_sheets(other_file.getvalue())
-        # Nếu file có nhiều tab, ưu tiên tab đầu hoặc tab có chữ indue
+        # If a file has multiple tabs, prefer the first one or one containing "indue"
         def pick_sheet(sheets, prefer_indue):
             names = list(sheets.keys())
             if len(names) == 1:
@@ -267,27 +267,27 @@ else:
         other_sheet_name, other_raw = pick_sheet(other_sheets, prefer_indue=False)
         indue_label = indue_file.name.rsplit(".", 1)[0]
         other_label = other_file.name.rsplit(".", 1)[0]
-        st.caption(f"✓ File Indue: **{indue_file.name}** (tab: {indue_sheet_name})")
-        st.caption(f"✓ File so sánh: **{other_file.name}** (tab: {other_sheet_name})")
+        st.caption(f"✓ Indue file: **{indue_file.name}** (tab: {indue_sheet_name})")
+        st.caption(f"✓ Comparison file: **{other_file.name}** (tab: {other_sheet_name})")
 
 # ============================================================================
-# CHẠY MATCHING
+# RUN MATCHING
 # ============================================================================
 if indue_raw is not None and other_raw is not None:
     indue_names = extract_names(indue_raw)
     other_names = extract_names(other_raw)
 
-    st.write(f"📋 **{indue_label}**: {len(indue_names)} công ty &nbsp;|&nbsp; **{other_label}**: {len(other_names)} công ty")
+    st.write(f"📋 **{indue_label}**: {len(indue_names)} companies &nbsp;|&nbsp; **{other_label}**: {len(other_names)} companies")
 
-    if st.button("🚀 Chạy so khớp", type="primary"):
+    if st.button("🚀 Run matching", type="primary"):
         if not indue_names or not other_names:
-            st.error("Không tìm thấy tên công ty trong một trong hai nguồn dữ liệu. Kiểm tra lại file.")
+            st.error("No company names found in one of the two data sources. Please check your file(s).")
         else:
-            with st.spinner("Đang so khớp..."):
+            with st.spinner("Matching..."):
                 results = match_all(indue_names, other_names, threshold)
 
             matched = sum(1 for _, k, _ in results if k)
-            st.success(f"Hoàn tất! Khớp được {matched} / {len(indue_names)} công ty Indue.")
+            st.success(f"Done! Matched {matched} / {len(indue_names)} Indue companies.")
 
             result_df = pd.DataFrame(results, columns=[indue_label, other_label, "Match score"])
             result_df["Match score"] = result_df.apply(
@@ -297,17 +297,17 @@ if indue_raw is not None and other_raw is not None:
 
             output_bytes = build_output_excel(results, indue_label, other_label, indue_raw, other_raw)
             st.download_button(
-                label="⬇️ Tải file kết quả (.xlsx)",
+                label="⬇️ Download result file (.xlsx)",
                 data=output_bytes,
                 file_name="Matching result - OUTPUT.xlsx",
                 mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             )
 
-            with st.expander("Xem dữ liệu gốc"):
+            with st.expander("View original data"):
                 tab1, tab2 = st.tabs([f"Source - {indue_label}", f"Source - {other_label}"])
                 with tab1:
                     st.dataframe(indue_raw, use_container_width=True)
                 with tab2:
                     st.dataframe(other_raw, use_container_width=True)
 else:
-    st.info("👆 Upload file để bắt đầu.")
+    st.info("👆 Upload a file to get started.")
